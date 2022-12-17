@@ -1,0 +1,662 @@
+#include <stdio.h>
+#include <string.h>
+#include <fstream>
+#include <iostream>
+using namespace std;
+
+#define MXA_RECORD_NUM 100
+
+#define ALLOPERATIONS 7
+
+#define QUIT 0
+#define SORT 1
+#define SEARCH 2
+#define INSERT 3
+#define CHANGE 4
+#define DELETE 5
+#define ADD 6
+#define SHOW 7
+#define SAVE 8
+#define HELP 9
+const char SPLIT_SIGN[]="********************************************";
+const char COLUMN[]="number      name        class       score";
+const char COLUMN_REGULAR[]="%-12s%-12s%-12d%-12d\n";
+//结构体定义
+struct Operate_parameter
+{
+	int location;
+	char value[100];
+	int reverse;
+	char keyward[10];
+	char numb[15];
+	char name[15];
+	int Class;
+	int score;
+};
+
+struct Student_info
+{
+//	string numb;
+//	string name;
+	char numb[15];
+	char name[15];
+	int Class;
+	int score;
+};
+//函数初始化声明
+void Init_Parameter_Struct(struct Operate_parameter *OperateParameter);
+void Init_Windows(struct Operate_parameter *OperateParameter);
+void Operation_Help();
+int  Scan_Operate(char OperateHandle[]);
+void Scan_Parameter(char OperateHandle[],struct Operate_parameter *OperateParameter);
+void Load_Students_Information(struct Student_info StudInfo[],int *StudentNum);
+void Save_Students_Information(struct Student_info StudInfo[],int StudentNum);
+void Sort(struct Student_info StudInfo[],int StudentNum,struct Operate_parameter OperateParameter);//排序
+void Search(struct Student_info StudInfo[],int StudentNum,struct Operate_parameter OperateParameter);
+void Delete(struct Student_info StudInfo[],int *StudentNum,struct Operate_parameter OperateParameter);
+void Insert(struct Student_info StudInfo[],int *StudentNum,struct Operate_parameter OperateParameter);
+void Change(struct Student_info StudInfo[],int StudentNum,struct Operate_parameter OperateParameter);
+void Add(struct Student_info StudInfo[],int *StudentNum,struct Operate_parameter OperateParameter);
+void Show_All(struct Student_info StudInfo[],int StudentNum);
+void Show(struct Student_info *StudInfo);
+
+//主运行程序---
+int main(){
+	char OperateHandle[100];//用以记录操作信息
+	struct Operate_parameter OperateParameter;//记录参数
+	struct Student_info StudInfo[MXA_RECORD_NUM];//记录学生信息
+	int StudentNum;
+	int OperationIndex;
+	Load_Students_Information(StudInfo,&StudentNum);
+	Show_All(StudInfo,StudentNum);
+	Init_Windows(&OperateParameter);
+	while(1){
+		Init_Parameter_Struct(&OperateParameter);
+		printf(">>>");//输入操作
+		gets(OperateHandle);
+		
+		
+		OperationIndex=Scan_Operate(OperateHandle);
+		Scan_Parameter(OperateHandle,&OperateParameter);
+		switch (OperationIndex) {
+		case QUIT:
+			Save_Students_Information(StudInfo,StudentNum);
+			return 0;
+			break;
+		case SORT:
+			Sort(StudInfo,StudentNum,OperateParameter);
+			break;
+		case SEARCH:
+			Search(StudInfo,StudentNum,OperateParameter);
+			break;
+		case INSERT:
+			Insert(StudInfo,&StudentNum,OperateParameter);
+			break;
+		case CHANGE:
+			Change(StudInfo,StudentNum,OperateParameter);
+			break;
+		case DELETE:
+			Delete(StudInfo,&StudentNum,OperateParameter);
+			break;
+		case ADD:
+			Add(StudInfo,&StudentNum,OperateParameter);
+			Save_Students_Information(StudInfo,StudentNum);
+			break;
+		case SHOW:
+			Show_All(StudInfo,StudentNum);
+			break;
+		case SAVE:
+			Save_Students_Information(StudInfo,StudentNum);
+			break;
+		case HELP:
+			Operation_Help();
+			break;
+		default:
+			printf("Unknow opration!\n\n");
+			Operation_Help();
+			break;
+		}
+	}
+}
+
+
+//函数开发---
+///*---工具类函数---*///
+/*字符串转数字*/
+int Str_To_Int(char s[]){
+	int i=0;
+	int _int_=0;
+	while(s[i]!='\0'){
+		_int_*=10;
+		_int_+=s[i]-'0';
+		i++;
+	}
+	return _int_;
+}
+/*数字转字符串*/
+string Int_To_Str(int x){
+	string line;
+	int a[10],len=0;
+	char b[10];
+	if(x==0){
+		line="0";
+	}else{
+		while(x>0){
+			a[len]=x%10;
+			len++;x/=10;
+		}
+		for(int i=0;i<len;i++){
+			b[i]=a[len-i-1]+'0';
+		}
+		b[len]='\0';
+		line = b;
+	}
+	return line;
+}
+/*查找参数*/
+void Find_Parameter(char OperateHandle[],int pos,char *p){
+	while(!(OperateHandle[pos]==' ' || OperateHandle[pos]=='\0')){
+		*p=OperateHandle[pos];
+		pos++;p++;
+	}
+	*p='\0';
+}
+
+void Map_Stud_Info(struct Student_info *p,string line){//打包学生信息的字符串到结构体中
+	char InfoLine[50];
+	char strtmp[20];
+	int l=0,r=0;
+	int i,j;
+	int key=0;
+	strcpy(InfoLine,line.c_str());
+	int length = strlen(InfoLine);
+	for(i=0;i<=length;i++){
+		if(InfoLine[i]==',' || InfoLine[i]=='\0'){
+			if(r){
+				l=r+2;	
+			}
+			r=i-1;
+			for(j=l;j<=r;j++){
+				strtmp[j-l]=InfoLine[j];
+			}
+			strtmp[j-l]='\0';
+			switch (key) {
+				case 0:
+					strcpy(p->numb,strtmp);
+					key++;
+					break;
+				case 1:
+					strcpy(p->name,strtmp);
+					key++;
+					break;
+				case 2:
+					p->Class=Str_To_Int(strtmp);
+					key++;
+					break;	
+				case 3:
+					p->score=Str_To_Int(strtmp);
+					key++;
+					break;
+				default:
+					break;
+		}
+		
+		}
+	}
+}
+
+string Zip_Stud_Info(struct Student_info *p){
+	string line;
+	string strtmp;
+	line=p->numb;
+	line+=",";strtmp=p->name;
+	line+=strtmp;
+	line+=",";strtmp=Int_To_Str(p->Class);
+	line+=strtmp;
+	line+=",";strtmp=Int_To_Str(p->score);
+	line+=strtmp;
+	return line;
+}
+
+
+void Show_Column(){
+	puts(SPLIT_SIGN);
+	puts(COLUMN);
+}
+
+
+void Show_End(){
+	puts(SPLIT_SIGN);
+}
+
+
+void Change_Information(struct Student_info *StudInfo,struct Operate_parameter OperateParameter){
+	if(OperateParameter.numb[0]!='\0'){
+		strcpy(StudInfo->numb,OperateParameter.numb);
+	}else if (StudInfo->numb[0]=='\0'){
+		strcpy(StudInfo->numb,"None");
+	}
+	
+	if(OperateParameter.name[0]!='\0'){
+		strcpy(StudInfo->name,OperateParameter.name);
+	}else if (StudInfo->name[0]=='\0'){
+		strcpy(StudInfo->name,"None");
+	}
+	
+	if (OperateParameter.Class>-1){
+		StudInfo->Class = OperateParameter.Class;
+	}
+	
+	if(OperateParameter.score>-1){
+		StudInfo->score = OperateParameter.score;
+	}
+	
+}
+///*---主要函数---*///
+
+
+void  Init_StudInfo(struct Student_info *StudInfo){
+	StudInfo->Class = 0;
+	StudInfo->name[0] = '\0';
+	StudInfo->numb[0] = '\0';
+	StudInfo->score = 0;
+}
+
+
+void Init_Parameter_Struct(struct Operate_parameter *OperateParameter){
+	OperateParameter->numb[0]='\0';
+	OperateParameter->name[0]='\0';
+	OperateParameter->reverse=0;
+	OperateParameter->location=-1;
+	OperateParameter->value[0]='\0';
+	OperateParameter->keyward[0]='\0';
+	OperateParameter->Class=-1;
+	OperateParameter->score=-1;
+}
+
+
+/*窗口初始化的函数*/
+void Init_Windows(struct Operate_parameter *OperateParameter){
+	Init_Parameter_Struct(OperateParameter);
+	printf("Input help to get help.\n");
+}
+
+/*帮助函数*/
+void Operation_Help(){
+	puts(SPLIT_SIGN);
+	printf("This program support operations as follows:\n");
+	printf("quit\n");//退出程序
+	printf("sort [-k <keyword>] [-r(reverse)]\n");//排序学生信息
+	printf("search -k <keyword> -v <value>\n");//查找学生信息
+	printf("insert -l <location>\n");//插入新的空学生信息
+	printf("change [-l <location>] [-N <name>] [-n <number>] -k <keyword> -v <value>\n");//改变学生信息
+	printf("delete [-l <location>] [-k <keyword>] [-v <value>]\n");//删除学生信息
+	printf("add [-N <name>] [-n <number>] [-c <class>] [-s <score>]\n");//在末尾插入新的空学生信息
+	printf("show (show all the students information)\n");
+	printf("save (save all the students information)\n");
+	puts(SPLIT_SIGN);
+}
+
+/*检测操作类型的函数*/
+int Scan_Operate(char OperateHandle[]){
+	string operatehandle = OperateHandle;
+	operatehandle = operatehandle.substr(0,6);
+	if(operatehandle.find("quit")==0){
+		return QUIT;
+	}else if(operatehandle.find("sort")==0){
+		return SORT;
+	}else if(operatehandle.find("search")==0){
+		return SEARCH;
+	}else if(operatehandle.find("insert")==0){
+		return INSERT;
+	}else if(operatehandle.find("change")==0){
+		return CHANGE;
+	}else if(operatehandle.find("delete")==0){
+		return DELETE;
+	}else if(operatehandle.find("add")==0){
+		return ADD;
+	}else if(operatehandle.find("show")==0){
+		return SHOW;
+	}else if(operatehandle.find("save")==0){
+		return SAVE;
+	}else if(operatehandle.find("help")==0){
+		return HELP;
+	}
+	return -1;
+}
+
+/*获取各种参数*/
+void Scan_Parameter(char OperateHandle[],struct Operate_parameter *OperateParameter){
+	string operatehandle = OperateHandle;
+	int pos;
+	char para[100];
+	if((pos=operatehandle.find("-k "))>=0){
+		pos += 3;
+		Find_Parameter(OperateHandle,pos,para);
+		strcpy(OperateParameter->keyward,para);
+	}
+	if((pos=operatehandle.find("-r"))>=0){
+		OperateParameter->reverse = 1;
+	}
+	if((pos=operatehandle.find("-v "))>=0){
+		pos += 3;
+		Find_Parameter(OperateHandle,pos,para);
+		strcpy(OperateParameter->value,para);
+	}
+	if((pos=operatehandle.find("-l "))>=0){
+		pos += 3;
+		Find_Parameter(OperateHandle,pos,para);
+		OperateParameter->location=0;
+		int p=0;
+		while(para[p]!='\0'){
+			OperateParameter->location*=10;
+			OperateParameter->location+=(para[p]-'0');
+			p++;
+		}
+		OperateParameter->location-=1;
+	}
+	if((pos=operatehandle.find("-N "))>=0){
+		pos += 3;
+		Find_Parameter(OperateHandle,pos,para);
+		strcpy(OperateParameter->name,para);
+	}
+	if((pos=operatehandle.find("-n "))>=0){
+		pos += 3;
+		Find_Parameter(OperateHandle,pos,para);
+		strcpy(OperateParameter->numb,para);
+	}
+	if((pos=operatehandle.find("-c "))>=0){
+		pos += 3;
+		Find_Parameter(OperateHandle,pos,para);
+		OperateParameter->Class = Str_To_Int(para);
+	}
+	if((pos=operatehandle.find("-s "))>=0){
+		pos += 3;
+		Find_Parameter(OperateHandle,pos,para);
+		OperateParameter->score = Str_To_Int(para);
+	}
+}
+
+/*加载学生信息*/
+void Load_Students_Information(struct Student_info StudInfo[],int *StudentNum){
+	*StudentNum=0;
+	ifstream inFile;//定义文件输入流
+	inFile.open("StudInfo.txt");//打开文件
+	string line;//定义一个字符串变量，用于存储文件中的内容
+	while (getline(inFile, line))//循环读取文件的每一行
+	{
+		/*将数据存储到学生信息中*/
+		Map_Stud_Info(&StudInfo[*StudentNum],line);
+		(*StudentNum)++;
+	}
+	
+	inFile.close();//关闭文件
+}
+/*保存学生信息*/
+void Save_Students_Information(struct Student_info StudInfo[],int StudentNum){
+	ofstream outFile("StudInfo.txt");//定义文件输出流
+	string line;
+	for(int i=0;i<StudentNum;i++){
+		line=Zip_Stud_Info(&StudInfo[i]);
+		outFile << line << endl;
+	}
+	outFile.close();//关闭文件
+	printf("Informations is saved\n");
+}
+/*展示学生信息*/
+void Show_All(struct Student_info StudInfo[],int StudentNum){//全部
+	puts(SPLIT_SIGN);
+	printf("All the students information are as follows:\n");
+	puts(COLUMN);
+	for(int i=0;i<StudentNum;i++){
+//		strcpy(numb,StudInfo[i].numb.c_str());
+//		strcpy(name,StudInfo[i].name.c_str());
+		printf("%-12s%-12s%-12d%-12d\n",StudInfo[i].numb,StudInfo[i].name,StudInfo[i].Class,StudInfo[i].score);
+	}
+	puts(SPLIT_SIGN);
+}
+
+
+void Show(struct Student_info *StudInfo){
+	printf("%-12s%-12s%-12d%-12d\n",StudInfo->numb,StudInfo->name,StudInfo->Class,StudInfo->score);
+}
+
+
+void Sort(struct Student_info StudInfo[],int StudentNum,struct Operate_parameter OperateParameter){//排序
+	int sign = 1;
+	struct Student_info TmpStudInfo;
+	if(OperateParameter.reverse){
+		sign = -1;
+	}
+	int f=1;
+	int k;
+	if (strcmp(OperateParameter.keyward,"number")==0){
+		for(int i=0;i<StudentNum-1;i++){
+			k=i;
+			for(int j=i+1;j<StudentNum;j++){
+				if (sign*strcmp(StudInfo[k].numb,StudInfo[j].numb)>0){
+					k=j;
+				}
+			}
+			if(k!=i){
+				TmpStudInfo=StudInfo[k];StudInfo[k]=StudInfo[i];StudInfo[i]=TmpStudInfo;
+			}
+		}
+	}else if(strcmp(OperateParameter.keyward,"name")==0){
+		for(int i=0;i<StudentNum-1;i++){
+			k=i;
+			for(int j=i+1;j<StudentNum;j++){
+				if (sign*strcmp(StudInfo[k].name,StudInfo[j].name)>0){
+					k=j;
+				}
+			}
+			if(k!=i){
+				TmpStudInfo=StudInfo[k];StudInfo[k]=StudInfo[i];StudInfo[i]=TmpStudInfo;
+			}
+		}
+	}else if(strcmp(OperateParameter.keyward,"class")==0){
+		for(int i=0;i<StudentNum-1;i++){
+			k=i;
+			for(int j=i+1;j<StudentNum;j++){
+				if (sign*StudInfo[k].Class>sign*StudInfo[j].Class){
+					k=j;
+				}
+			}
+			if(k!=i){
+				TmpStudInfo=StudInfo[k];StudInfo[k]=StudInfo[i];StudInfo[i]=TmpStudInfo;
+			}
+		}
+	}else if(strcmp(OperateParameter.keyward,"score")==0){
+		for(int i=0;i<StudentNum-1;i++){
+			k=i;
+			for(int j=i+1;j<StudentNum;j++){
+				if (sign*StudInfo[k].score>sign*StudInfo[j].score){
+					k=j;
+				}
+			}
+			if(k!=i){
+				TmpStudInfo=StudInfo[k];StudInfo[k]=StudInfo[i];StudInfo[i]=TmpStudInfo;
+			}
+		}
+	}else{
+		printf("error\n");
+		f=0;
+	}
+	
+	if(f){
+		printf("The information is sorted by %s\n",OperateParameter.keyward);
+	}
+	
+}
+
+
+void Search(struct Student_info StudInfo[],int StudentNum,struct Operate_parameter OperateParameter){
+	
+	if(OperateParameter.location>=0){
+		Show_Column();
+		Show(&StudInfo[OperateParameter.location]);
+		Show_End();
+	}else if (strcmp(OperateParameter.keyward,"number")==0){
+		Show_Column();
+		for(int i=0;i<StudentNum;i++){
+			if (strcmp(StudInfo[i].numb,OperateParameter.value)==0){
+				Show(&StudInfo[i]);
+			}
+		}
+		Show_End();
+	}else if(strcmp(OperateParameter.keyward,"name")==0){
+		Show_Column();
+		for(int i=0;i<StudentNum;i++){
+			if (strcmp(StudInfo[i].name,OperateParameter.value)==0){
+				Show(&StudInfo[i]);
+			}
+		}
+		Show_End();
+	}else if(strcmp(OperateParameter.keyward,"class")==0){
+		Show_Column();
+		for(int i=0;i<StudentNum;i++){
+			if (StudInfo[i].Class == Str_To_Int(OperateParameter.value)){
+				Show(&StudInfo[i]);
+			}
+		}
+		Show_End();
+	}else if(strcmp(OperateParameter.keyward,"score")==0){
+		Show_Column();
+		for(int i=0;i<StudentNum;i++){
+			if (StudInfo[i].score == Str_To_Int(OperateParameter.value)){
+				Show(&StudInfo[i]);
+			}
+		}
+		Show_End();
+	}else{
+		printf("Lack of parameter!\n");
+	}
+	
+}
+
+
+void Delete(struct Student_info StudInfo[],int *StudentNum,struct Operate_parameter OperateParameter){
+	int i=0;
+	if(OperateParameter.location>=0){
+		(*StudentNum)--;
+		for(int i=OperateParameter.location;i<*StudentNum;i++){
+			StudInfo[i]=StudInfo[i+1];
+		}
+	}else if(strcmp(OperateParameter.keyward,"name")==0){
+		while(i<*StudentNum){
+			if(strcmp(StudInfo[i].name,OperateParameter.value)==0){
+				(*StudentNum)--;
+				for(int j=i;j<*StudentNum;j++){
+					StudInfo[j]=StudInfo[j+1];
+				}
+				i--;
+			}
+			i++;
+		}
+	}else if(strcmp(OperateParameter.keyward,"number")==0){
+		while(i<*StudentNum){
+			if(strcmp(StudInfo[i].numb,OperateParameter.value)==0){
+				(*StudentNum)--;
+				for(int j=i;j<*StudentNum;j++){
+					StudInfo[j]=StudInfo[j+1];
+				}
+				i--;
+			}
+			i++;
+		}
+	}else if(strcmp(OperateParameter.keyward,"class")==0){
+		while(i<*StudentNum){
+			if(StudInfo[i].Class==Str_To_Int(OperateParameter.value)){
+				(*StudentNum)--;
+				for(int j=i;j<*StudentNum;j++){
+					StudInfo[j]=StudInfo[j+1];
+				}
+				i--;
+			}
+			i++;
+		}
+	}else if(strcmp(OperateParameter.keyward,"score")==0){
+		while(i<*StudentNum){
+			if(StudInfo[i].score==Str_To_Int(OperateParameter.value)){
+				(*StudentNum)--;
+				for(int j=i;j<*StudentNum;j++){
+					StudInfo[j]=StudInfo[j+1];
+				}
+				i--;
+			}
+			i++;
+		}
+	}
+}
+
+
+void Insert(struct Student_info StudInfo[],int *StudentNum,struct Operate_parameter OperateParameter){
+	int i;
+	if(OperateParameter.location<0){
+		printf("Position error!\n");
+	}else if(OperateParameter.location>=0){
+		if (OperateParameter.location > *StudentNum){
+			OperateParameter.location = *StudentNum;
+		}
+		
+		for(i=*StudentNum;i>OperateParameter.location;i--){
+			StudInfo[i]=StudInfo[i-1];
+		}
+		
+		Init_StudInfo(&StudInfo[i]);
+		Change_Information(&StudInfo[i],OperateParameter);
+		
+		(*StudentNum)++;
+	}
+}
+
+
+void Change(struct Student_info StudInfo[],int StudentNum,struct Operate_parameter OperateParameter){
+	int f=1;
+	if(OperateParameter.location>=0){
+		if(OperateParameter.location>=StudentNum){
+			OperateParameter.location=StudentNum-1;
+		}
+		Change_Information(&StudInfo[OperateParameter.location],OperateParameter);
+	}else if (strcmp(OperateParameter.keyward,"number")==0){
+		for(int i=0;i<StudentNum;i++){
+			if (strcmp(StudInfo[i].numb,OperateParameter.value)==0){
+				Change_Information(&StudInfo[i],OperateParameter);
+			}
+		}
+	}else if(strcmp(OperateParameter.keyward,"name")==0){
+		for(int i=0;i<StudentNum;i++){
+			if (strcmp(StudInfo[i].name,OperateParameter.value)==0){
+				Change_Information(&StudInfo[i],OperateParameter);
+			}
+		}
+	}else if(strcmp(OperateParameter.keyward,"class")==0){
+		for(int i=0;i<StudentNum;i++){
+			if (StudInfo[i].Class==Str_To_Int(OperateParameter.value)){
+				Change_Information(&StudInfo[i],OperateParameter);
+			}
+		}
+	}else if(strcmp(OperateParameter.keyward,"score")==0){
+		for(int i=0;i<StudentNum;i++){
+			if (StudInfo[i].score==Str_To_Int(OperateParameter.value)){
+				Change_Information(&StudInfo[i],OperateParameter);
+			}
+		}
+	}else{
+		printf("Lack of parameter!\n");
+		f=0;
+	}
+	
+	if(f){
+		printf("Information is changed\n");
+	}
+}
+
+
+void Add(struct Student_info StudInfo[],int *StudentNum,struct Operate_parameter OperateParameter){
+	Init_StudInfo(&StudInfo[*StudentNum]);
+	Change_Information(&StudInfo[*StudentNum],OperateParameter);
+	(*StudentNum)++;
+}
+//add -n 0005 -N xyz -c 4 -s 44
+//insert -l 4 -n 0005 -N xyz -c 4 -s 44
